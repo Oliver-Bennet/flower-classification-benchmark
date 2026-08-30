@@ -1,0 +1,11 @@
+# configs/config_transformer.yaml (khuyến nghị)
+dataset:
+  root: "data/flowers"
+
+dataloader:
+  batch_size: 32          # giảm xuống 16 nếu OOM
+
+training:
+  epochs: 20
+  learning_rate: 0.0003   # thấp hơn CNN
+  weight_decay: 0.05      # quan trọng với ViT

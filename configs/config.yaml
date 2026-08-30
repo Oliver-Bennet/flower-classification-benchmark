@@ -1,0 +1,22 @@
+dataset:
+  root: "D:\\flower-classification-benchmark\\data\\flowers"
+  image_size: 224
+  num_classes: 102
+
+dataloader:
+  batch_size: 16
+  num_workers: 4
+  pin_memory: true
+
+training:
+  epochs: 100
+  learning_rate: 0.0003
+  weight_decay: 0.05
+  optimizer: adamw
+  scheduler: cosine
+
+model:
+  pretrained: false
+
+output:
+  save_dir: outputs
