@@ -1,36 +1,121 @@
-import os
+"""
+Simple CSV / JSON logger for training history.
+"""
+
+from __future__ import annotations
+
+import csv
 import json
-from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
-class Logger:
-    def __init__(self, log_dir="outputs/logs"):
-        self.log_dir = log_dir
-        os.makedirs(log_dir, exist_ok=True)
-        self.history = {
-            'train_loss': [],
-            'train_acc': [],
-            'val_loss': [],
-            'val_acc': [],
-            'lr': []
-        }
-        self.start_time = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    def log(self, epoch, train_metrics, val_metrics, lr):
-        self.history['train_loss'].append(train_metrics['loss'])
-        self.history['train_acc'].append(train_metrics['accuracy'])
-        self.history['val_loss'].append(val_metrics['loss'])
-        self.history['val_acc'].append(val_metrics['accuracy'])
-        self.history['lr'].append(lr)
+class TrainingLogger:
+    """
+    Logs per-epoch metrics to console, CSV, and JSON.
+    Keeps an in-memory history and can retrieve the best epoch.
+    """
 
-        print(f"Epoch {epoch:03d} | "
-              f"Train Loss: {train_metrics['loss']:.4f} | Train Acc: {train_metrics['accuracy']:.4f} | "
-              f"Val Loss: {val_metrics['loss']:.4f} | Val Acc: {val_metrics['accuracy']:.4f} | "
-              f"LR: {lr:.6f}")
+    def __init__(
+        self,
+        log_dir: str | Path,
+        experiment_name: str = "run",
+        console: bool = True,
+    ):
+        self.log_dir = Path(log_dir)
+        self.log_dir.mkdir(parents=True, exist_ok=True)
 
-    def save(self, filename=None):
-        if filename is None:
-            filename = f"history_{self.start_time}.json"
-        path = os.path.join(self.log_dir, filename)
-        with open(path, 'w') as f:
+        self.experiment_name = experiment_name
+        self.console = console
+
+        self.csv_path = self.log_dir / f"{experiment_name}_history.csv"
+        self.json_path = self.log_dir / f"{experiment_name}_history.json"
+
+        self.history: List[Dict[str, Any]] = []
+        self._fieldnames: Optional[List[str]] = None
+
+        self._csv_file = None
+        self._csv_writer = None
+
+    def log(self, epoch: int, metrics: Dict[str, Any]) -> None:
+        """
+        Record one epoch of metrics.
+        """
+        row = {"epoch": epoch, **metrics}
+        self.history.append(row)
+
+        # Console
+        if self.console:
+            parts = [
+                f"{key}: {value:.4f}"
+                if isinstance(value, float)
+                else f"{key}: {value}"
+                for key, value in row.items()
+            ]
+            print(" | ".join(parts))
+
+        # Initialize CSV writer on first log
+        if self._fieldnames is None:
+            self._fieldnames = list(row.keys())
+
+            self._csv_file = open(
+                self.csv_path,
+                "w",
+                newline="",
+                encoding="utf-8",
+            )
+
+            self._csv_writer = csv.DictWriter(
+                self._csv_file,
+                fieldnames=self._fieldnames,
+                extrasaction="ignore",
+            )
+
+            self._csv_writer.writeheader()
+
+        # Write row
+        self._csv_writer.writerow(row)
+        self._csv_file.flush()
+
+    def save_json(self) -> None:
+        """
+        Save full in-memory history to JSON.
+        """
+        with open(self.json_path, "w", encoding="utf-8") as f:
             json.dump(self.history, f, indent=2)
-        print(f"History saved to {path}")
+
+    def get_best(
+        self,
+        key: str = "val_accuracy",
+        mode: str = "max",
+    ) -> Dict[str, Any]:
+        """
+        Return the epoch with the best value for a metric.
+        """
+        if not self.history:
+            return {}
+
+        if mode == "max":
+            return max(
+                self.history,
+                key=lambda row: row.get(key, float("-inf")),
+            )
+
+        if mode == "min":
+            return min(
+                self.history,
+                key=lambda row: row.get(key, float("inf")),
+            )
+
+        raise ValueError("mode must be 'min' or 'max'")
+
+    def close(self) -> None:
+        """
+        Save JSON history and close the CSV file.
+        """
+        self.save_json()
+
+        if self._csv_file is not None:
+            self._csv_file.close()
+            self._csv_file = None
+            self._csv_writer = None

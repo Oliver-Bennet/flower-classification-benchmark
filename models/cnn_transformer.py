@@ -1,78 +1,255 @@
+"""
+Hybrid CNN + Transformer Encoder for image classification.
+
+CNN extracts local features → tokens → Transformer Encoder → classifier.
+"""
+
+from __future__ import annotations
+
+from typing import List, Optional
+
 import torch
 import torch.nn as nn
 
-class CNNTransformer(nn.Module):
-    def __init__(self, num_classes=5, embed_dim=256, num_heads=4, num_layers=2, dropout=0.1):
+
+class CNNStem(nn.Module):
+    """Simple CNN backbone that produces a downsampled feature map."""
+
+    def __init__(
+        self,
+        in_channels: int = 3,
+        channels: Optional[List[int]] = None,
+    ):
         super().__init__()
-        
-        # CNN Backbone (giống SimpleCNN nhưng bỏ classifier)
-        self.backbone = nn.Sequential(
-            nn.Conv2d(3, 32, 3, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2),          # 112
-            
-            nn.Conv2d(32, 64, 3, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2),          # 56
-            
-            nn.Conv2d(64, 128, 3, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2),          # 28
-            
-            nn.Conv2d(128, embed_dim, 3, padding=1),
-            nn.BatchNorm2d(embed_dim),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2),          # 14 → feature map 14x14
-        )
-        
-        # Flatten spatial dimensions → sequence length = 14*14 = 196
-        self.seq_len = 14 * 14
-        
-        # Positional Embedding
-        self.pos_embed = nn.Parameter(torch.zeros(1, self.seq_len, embed_dim))
-        nn.init.trunc_normal_(self.pos_embed, std=0.02)
-        
-        # Transformer Encoder
-        encoder_layer = nn.TransformerEncoderLayer(
-            d_model=embed_dim,
-            nhead=num_heads,
-            dim_feedforward=embed_dim * 4,
+
+        # Three stride-2 convolution blocks:
+        # 224x224 → 112x112 → 56x56 → 28x28
+        if channels is None:
+            channels = [64, 128, 128]
+
+        layers: List[nn.Module] = []
+        prev = in_channels
+
+        for c in channels:
+            layers.extend(
+                [
+                    nn.Conv2d(
+                        prev,
+                        c,
+                        kernel_size=3,
+                        stride=2,
+                        padding=1,
+                    ),
+                    nn.BatchNorm2d(c),
+                    nn.ReLU(inplace=True),
+                ]
+            )
+            prev = c
+
+        self.net = nn.Sequential(*layers)
+        self.out_channels = channels[-1]
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.net(x)  # (B, C, H', W')
+
+
+class TransformerEncoderBlock(nn.Module):
+    def __init__(
+        self,
+        dim: int,
+        num_heads: int = 4,
+        mlp_ratio: float = 4.0,
+        dropout: float = 0.1,
+    ):
+        super().__init__()
+
+        self.norm1 = nn.LayerNorm(dim)
+
+        self.attn = nn.MultiheadAttention(
+            embed_dim=dim,
+            num_heads=num_heads,
             dropout=dropout,
-            activation='gelu',
-            batch_first=True
+            batch_first=True,
         )
-        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
-        
-        # Classification head
+
+        self.norm2 = nn.LayerNorm(dim)
+
+        hidden = int(dim * mlp_ratio)
+
+        self.mlp = nn.Sequential(
+            nn.Linear(dim, hidden),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden, dim),
+            nn.Dropout(dropout),
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # x: (B, N, D)
+
+        h = self.norm1(x)
+
+        attn_out, _ = self.attn(
+            h,
+            h,
+            h,
+            need_weights=False,
+        )
+
+        x = x + attn_out
+        x = x + self.mlp(self.norm2(x))
+
+        return x
+
+
+class CNNTransformer(nn.Module):
+    """
+    CNN stem → flatten spatial dims → project to embed_dim
+    → CLS token + positional embedding
+    → Transformer Encoder → CLS → classifier.
+
+    With the default configuration:
+
+        224x224
+          ↓
+        112x112
+          ↓
+        56x56
+          ↓
+        28x28
+          ↓
+        784 spatial tokens
+          ↓
+        + CLS token = 785 tokens
+          ↓
+        Transformer Encoder
+    """
+
+    def __init__(
+        self,
+        num_classes: int = 102,
+        in_channels: int = 3,
+        cnn_channels: Optional[List[int]] = None,
+        embed_dim: int = 256,
+        num_heads: int = 4,
+        num_layers: int = 2,
+        mlp_ratio: float = 4.0,
+        dropout: float = 0.1,
+        image_size: int = 224,
+    ):
+        super().__init__()
+
+        if cnn_channels is None:
+            cnn_channels = [64, 128, 128]
+
+        self.stem = CNNStem(
+            in_channels=in_channels,
+            channels=cnn_channels,
+        )
+
+        # Three stride-2 convs:
+        # image_size → image_size/2 → image_size/4 → image_size/8
+        feat_h = image_size // 8
+        feat_w = image_size // 8
+
+        self.num_tokens = feat_h * feat_w
+
+        self.proj = nn.Linear(
+            self.stem.out_channels,
+            embed_dim,
+        )
+
+        self.cls_token = nn.Parameter(
+            torch.zeros(1, 1, embed_dim)
+        )
+
+        self.pos_embed = nn.Parameter(
+            torch.zeros(
+                1,
+                self.num_tokens + 1,
+                embed_dim,
+            )
+        )
+
+        self.pos_drop = nn.Dropout(dropout)
+
+        self.blocks = nn.ModuleList(
+            [
+                TransformerEncoderBlock(
+                    dim=embed_dim,
+                    num_heads=num_heads,
+                    mlp_ratio=mlp_ratio,
+                    dropout=dropout,
+                )
+                for _ in range(num_layers)
+            ]
+        )
+
         self.norm = nn.LayerNorm(embed_dim)
-        self.head = nn.Linear(embed_dim, num_classes)
-        
-        self._init_weights()
-    
-    def _init_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Linear):
-                nn.init.trunc_normal_(m.weight, std=0.02)
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0)
-    
-    def forward(self, x):
+
+        self.head = nn.Linear(
+            embed_dim,
+            num_classes,
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        B = x.shape[0]
+
         # CNN feature extraction
-        x = self.backbone(x)                    # (B, embed_dim, 14, 14)
-        B, C, H, W = x.shape
-        x = x.flatten(2).transpose(1, 2)        # (B, 196, embed_dim)
-        
-        # Add positional embedding
-        x = x + self.pos_embed
-        
-        # Transformer
-        x = self.transformer(x)
-        x = self.norm(x)
-        
-        # Global average pooling over sequence
-        x = x.mean(dim=1)                       # (B, embed_dim)
-        
-        return self.head(x)
+        feat = self.stem(x)
+        # Expected: (B, C, 28, 28)
+
+        # Convert spatial feature map to tokens
+        feat = feat.flatten(2).transpose(1, 2)
+        # (B, 784, C)
+
+        # Project CNN features to Transformer dimension
+        tokens = self.proj(feat)
+        # (B, 784, embed_dim)
+
+        # Add CLS token
+        cls = self.cls_token.expand(B, -1, -1)
+
+        tokens = torch.cat(
+            [cls, tokens],
+            dim=1,
+        )
+        # (B, 785, embed_dim)
+
+        # Positional embedding
+        tokens = tokens + self.pos_embed
+        tokens = self.pos_drop(tokens)
+
+        # Transformer Encoder
+        for blk in self.blocks:
+            tokens = blk(tokens)
+
+        tokens = self.norm(tokens)
+
+        # Classification using CLS token
+        cls_out = tokens[:, 0]
+
+        return self.head(cls_out)
+
+
+def build_cnn_transformer(
+    cfg: dict,
+    num_classes: int,
+) -> CNNTransformer:
+    data = cfg.get("data", {})
+    m = cfg.get("model", {}).get("cnn_transformer", {})
+
+    return CNNTransformer(
+        num_classes=num_classes,
+        in_channels=3,
+        cnn_channels=m.get(
+            "cnn_channels",
+            [64, 128, 128],
+        ),
+        embed_dim=m.get("embed_dim", 256),
+        num_heads=m.get("num_heads", 4),
+        num_layers=m.get("num_layers", 2),
+        mlp_ratio=m.get("mlp_ratio", 4.0),
+        dropout=m.get("dropout", 0.1),
+        image_size=data.get("image_size", 224),
+    )

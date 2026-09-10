@@ -1,38 +1,76 @@
+"""
+Model evaluation on a DataLoader (val / test).
+"""
+
+from __future__ import annotations
+
+from typing import Any, Dict, List, Optional
+
 import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
 from tqdm import tqdm
-from engine.metrics import Metrics
-from utils.plot import plot_confusion_matrix
+
+from engine.metrics import MetricTracker
+from utils.timer import Timer
+
 
 class Evaluator:
-    def __init__(self, model, test_loader, criterion, device, num_classes, class_names):
+    def __init__(
+        self,
+        model: nn.Module,
+        device: torch.device,
+        num_classes: int = 102,
+        average: str = "macro",
+        use_amp: bool = False,
+    ):
         self.model = model.to(device)
-        self.test_loader = test_loader
-        self.criterion = criterion
         self.device = device
         self.num_classes = num_classes
-        self.class_names = class_names
+        self.average = average
+        self.use_amp = use_amp and device.type == "cuda"
 
-    def evaluate(self):
+    @torch.no_grad()
+    def evaluate(
+        self,
+        loader: DataLoader,
+        criterion: Optional[nn.Module] = None,
+        class_names: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
         self.model.eval()
-        metrics = Metrics(self.num_classes)
-        
-        with torch.no_grad():
-            for images, labels in tqdm(self.test_loader, desc="Evaluating"):
-                images, labels = images.to(self.device), labels.to(self.device)
-                outputs = self.model(images)
-                loss = self.criterion(outputs, labels)
-                metrics.update(outputs, labels, loss, images.size(0))
-        
-        results = metrics.compute()
-        
-        print("\n===== Test Results =====")
-        print(f"Loss      : {results['loss']:.4f}")
-        print(f"Accuracy  : {results['accuracy']:.4f}")
-        print(f"Precision : {results['precision']:.4f}")
-        print(f"Recall    : {results['recall']:.4f}")
-        print(f"F1-score  : {results['f1']:.4f}")
-        
-        # Vẽ confusion matrix
-        plot_confusion_matrix(results['confusion_matrix'], self.class_names)
-        
-        return results
+        tracker = MetricTracker(
+            num_classes=self.num_classes,
+            average=self.average,
+        )
+
+        timer = Timer()
+        timer.start()
+
+        for images, labels in tqdm(loader, desc="Evaluate", leave=False):
+            images = images.to(self.device, non_blocking=True)
+            labels = labels.to(self.device, non_blocking=True)
+
+            with torch.amp.autocast(
+            "cuda",
+            enabled=self.use_amp,):
+                logits = self.model(images)
+                loss = None
+                if criterion is not None:
+                    loss = criterion(logits, labels).item()
+
+            tracker.update(logits, labels, loss)
+
+        elapsed = timer.stop()
+        metrics = tracker.compute()
+        metrics["inference_time_sec"] = elapsed
+        metrics["inference_time_per_image_ms"] = (
+            (elapsed / max(tracker.n_samples, 1)) * 1000.0
+        )
+        metrics["num_samples"] = tracker.n_samples
+
+        result = {
+            "metrics": metrics,
+            "confusion_matrix": tracker.confusion(),
+            "classification_report": tracker.report(class_names),
+        }
+        return result

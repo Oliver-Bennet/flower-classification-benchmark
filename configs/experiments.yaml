@@ -1,0 +1,219 @@
+architecture:
+  E1_mlp:
+    description: "Baseline Multi-Layer Perceptron"
+    model:
+      name: "mlp"
+    training:
+      optimizer:
+        name: "adamw"
+        lr: 1.0e-3
+      scheduler:
+        name: "cosine"
+      initialization:
+        name: "default"
+
+  E2_cnn:
+    description: "Baseline CNN"
+    model:
+      name: "cnn"
+    training:
+      optimizer:
+        name: "adamw"
+        lr: 1.0e-3
+      scheduler:
+        name: "cosine"
+      initialization:
+        name: "default"
+
+  E3_cnn_transformer:
+    description: "Hybrid CNN + Transformer"
+    model:
+      name: "cnn_transformer"
+    training:
+      optimizer:
+        name: "adamw"
+        lr: 1.0e-3
+      scheduler:
+        name: "cosine"
+      initialization:
+        name: "default"
+
+  E4_vit:
+    description: "Vision Transformer (from scratch)"
+    model:
+      name: "vit"
+    training:
+      optimizer:
+        name: "adamw"
+        lr: 1.0e-3
+      scheduler:
+        name: "cosine"
+      initialization:
+        name: "default"
+
+  E5_swin:
+    description: "Swin Transformer (from scratch)"
+    model:
+      name: "swin"
+    training:
+      optimizer:
+        name: "adamw"
+        lr: 1.0e-3
+      scheduler:
+        name: "cosine"
+      initialization:
+        name: "default"
+
+  E6_convnext:
+    description: "Modern CNN – ConvNeXt (from scratch)"
+    model:
+      name: "convnext"
+    training:
+      optimizer:
+        name: "adamw"
+        lr: 1.0e-3
+      scheduler:
+        name: "cosine"
+      initialization:
+        name: "default"
+
+  E7_maxvit:
+    description: "MaxViT Hybrid (from scratch)"
+    model:
+      name: "maxvit"
+    training:
+      optimizer:
+        name: "adamw"
+        lr: 1.0e-3
+      scheduler:
+        name: "cosine"
+      initialization:
+        name: "default"
+# -----------------------------------------------------------------------------
+# Optimizer Benchmark (E8 – E10) – fixed model = CNN
+# -----------------------------------------------------------------------------
+optimizer:
+  E8_sgd:
+    description: "CNN + SGD"
+    model:
+      name: "cnn"
+    training:
+      optimizer:
+        name: "sgd"
+        lr: 1.0e-3
+        momentum: 0.9
+        weight_decay: 1.0e-4
+      scheduler:
+        name: "cosine"
+      initialization:
+        name: "default"
+
+  E9_adam:
+    description: "CNN + Adam"
+    model:
+      name: "cnn"
+    training:
+      optimizer:
+        name: "adam"
+        lr: 1.0e-3
+        weight_decay: 1.0e-4
+      scheduler:
+        name: "cosine"
+      initialization:
+        name: "default"
+
+  E10_adamw:
+    description: "CNN + AdamW (reference)"
+    model:
+      name: "cnn"
+    training:
+      optimizer:
+        name: "adamw"
+        lr: 1.0e-3
+        weight_decay: 1.0e-4
+      scheduler:
+        name: "cosine"
+      initialization:
+        name: "default"
+
+# -----------------------------------------------------------------------------
+# Weight Initialization Benchmark (E11 – E12) – fixed model = CNN, optimizer = AdamW
+# -----------------------------------------------------------------------------
+initialization:
+  E11_xavier:
+    description: "CNN + Xavier / Glorot init"
+    model:
+      name: "cnn"
+    training:
+      optimizer:
+        name: "adamw"
+        lr: 1.0e-3
+      scheduler:
+        name: "cosine"
+      initialization:
+        name: "xavier"
+
+  E12_kaiming:
+    description: "CNN + Kaiming / He init"
+    model:
+      name: "cnn"
+    training:
+      optimizer:
+        name: "adamw"
+        lr: 1.0e-3
+      scheduler:
+        name: "cosine"
+      initialization:
+        name: "kaiming"
+
+# -----------------------------------------------------------------------------
+# Learning Rate Scheduler Benchmark (E13 – E15)
+# -----------------------------------------------------------------------------
+scheduler:
+  E13_steplr:
+    description: "CNN + StepLR"
+    model:
+      name: "cnn"
+    training:
+      optimizer:
+        name: "adamw"
+        lr: 1.0e-3
+      scheduler:
+        name: "step"
+        step_size: 10
+        gamma: 0.1
+      initialization:
+        name: "default"
+
+  E14_cosine:
+    description: "CNN + Cosine Annealing (reference)"
+    model:
+      name: "cnn"
+    training:
+      optimizer:
+        name: "adamw"
+        lr: 1.0e-3
+      scheduler:
+        name: "cosine"
+        T_max: 30
+        eta_min: 1.0e-6
+      initialization:
+        name: "default"
+
+  E15_onecycle:
+    description: "CNN + OneCycleLR"
+    model:
+      name: "cnn"
+    training:
+      optimizer:
+        name: "adamw"
+        lr: 1.0e-3
+        weight_decay: 1.0e-4
+      scheduler:
+        name: "onecycle"
+        max_lr: 1.0e-2
+        pct_start: 0.3
+        div_factor: 25.0
+        final_div_factor: 1.0e4
+      initialization:
+        name: "default"

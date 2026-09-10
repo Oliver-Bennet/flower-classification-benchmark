@@ -1,25 +1,51 @@
+from __future__ import annotations
+
 import torch
 import torch.nn as nn
 
+
 class MLP(nn.Module):
-    def __init__(self, num_classes=5, img_size=224, hidden_dims=[512, 256, 128]):
+    """
+    Multi-Layer Perceptron baseline for image classification.
+
+    The input image is spatially compressed using Adaptive Average
+    Pooling before being flattened and passed through fully-connected
+    layers.
+    """
+
+    def __init__(
+        self,
+        num_classes: int,
+        hidden_dim: int = 512,
+        dropout: float = 0.3,
+    ):
         super().__init__()
-        input_dim = 3 * img_size * img_size  # flatten RGB image
-        
-        layers = []
-        prev_dim = input_dim
-        
-        for hidden_dim in hidden_dims:
-            layers.extend([
-                nn.Linear(prev_dim, hidden_dim),
-                nn.ReLU(inplace=True),
-                nn.Dropout(0.3)
-            ])
-            prev_dim = hidden_dim
-        
-        layers.append(nn.Linear(prev_dim, num_classes))
-        self.network = nn.Sequential(*layers)
-    
-    def forward(self, x):
-        x = x.view(x.size(0), -1)  # Flatten: (B, 3, H, W) → (B, 3*H*W)
-        return self.network(x)
+
+        self.pool = nn.AdaptiveAvgPool2d((16, 16))
+
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(3 * 16 * 16, hidden_dim),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim, 256),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(256, num_classes),
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.pool(x)
+        x = self.classifier(x)
+        return x
+
+
+def build_mlp(cfg: dict, num_classes: int) -> MLP:
+    """Factory from config dict."""
+    model_cfg = cfg.get("model", {}).get("mlp", {})
+
+    return MLP(
+        num_classes=num_classes,
+        hidden_dim=model_cfg.get("hidden_dim", 512),
+        dropout=model_cfg.get("dropout", 0.3),
+    )

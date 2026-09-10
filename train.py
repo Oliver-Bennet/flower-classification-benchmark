@@ -1,126 +1,158 @@
+"""
+Main training entry point.
+
+Usage examples
+--------------
+# Train baseline CNN with default config
+python train.py --experiment E2_cnn
+
+# Train a specific architecture group experiment
+python train.py --experiment architecture.E4_vit
+
+# Override config path / output name
+python train.py --experiment E2_cnn --name my_cnn_run
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+
+from datasets.flower_dataset import create_dataloaders, create_datasets, print_dataset_summary
+from engine.trainer import Trainer
+from initialization import apply_from_config
+from models import build_model, count_parameters
+from optimizers import build_optimizer
+from schedulers import build_scheduler
+from utils.config import ensure_dirs, get_device, load_config
+from utils.seed import set_seed
+from utils.visualization import plot_curves
+
 import torch
 import torch.nn as nn
-import yaml
-import argparse
-from torch.utils.data import DataLoader
 
-from datasets.flower_dataset import FlowerDataset, get_transforms
-from models import MLP, SimpleCNN, CNNTransformer, create_vit, create_swin, create_convnext, create_maxvit
-from engine.trainer import Trainer
-from engine.evaluator import Evaluator
-from utils.checkpoint import load_checkpoint
+def parse_args():
+    p = argparse.ArgumentParser(description="Flower Classification Benchmark – Train")
+    p.add_argument(
+        "--config",
+        type=str,
+        default="configs/config.yaml",
+        help="Path to base config.yaml",
+    )
+    p.add_argument(
+        "--experiments",
+        type=str,
+        default="configs/experiments.yaml",
+        help="Path to experiments.yaml",
+    )
+    p.add_argument(
+        "--experiment",
+        type=str,
+        default=None,
+        help="Experiment name (e.g. E2_cnn or architecture.E2_cnn)",
+    )
+    p.add_argument(
+        "--name",
+        type=str,
+        default=None,
+        help="Override experiment name used for logs/checkpoints",
+    )
+    return p.parse_args()
 
-def get_model(name, num_classes):
-    if name == 'mlp':
-        return MLP(num_classes=num_classes)
-    elif name == 'cnn':
-        return SimpleCNN(num_classes=num_classes)
-    elif name == 'cnn_transformer':
-        return CNNTransformer(num_classes=num_classes)
-    elif name == 'vit':
-        return create_vit(num_classes=num_classes, model_name='vit_tiny_patch16_224', pretrained=False)
-    elif name == 'swin':
-        return create_swin(num_classes=num_classes, model_name='swin_tiny_patch4_window7_224', pretrained=False)
-    elif name == 'convnext':
-        return create_convnext(num_classes=num_classes, model_name='convnext_tiny', pretrained=False)
-    elif name == 'maxvit':
-        return create_maxvit(num_classes=num_classes, model_name='maxvit_tiny_tf_224', pretrained=False)
-    else:
-        raise ValueError(f"Unknown model: {name}")
 
-def main(args):
-    # Load config
-    with open(args.config, "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
-    
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(f"Using device: {device}")
-    
+def main():
+    args = parse_args()
+    cfg = load_config(args.config, args.experiment, args.experiments)
+    ensure_dirs(cfg)
+
+    exp_name = args.name or args.experiment or cfg.get("model", {}).get("name", "run")
+    exp_name = exp_name.replace(".", "_")
+
+    seed = cfg.get("project", {}).get("seed", 42)
+    deterministic = cfg.get("project", {}).get("deterministic", False)
+
+    set_seed(seed, deterministic=deterministic)
+
+    device = get_device(cfg)
+    print(f"Device          : {device}")
+    print(f"Experiment      : {exp_name}")
+    print(f"Model           : {cfg.get('model', {}).get('name')}")
+    print(f"Optimizer       : {cfg.get('training', {}).get('optimizer', {}).get('name')}")
+    print(f"Scheduler       : {cfg.get('training', {}).get('scheduler', {}).get('name')}")
+    print(f"Initialization  : {cfg.get('training', {}).get('initialization', {}).get('name')}")
+
     # Data
-    train_tf, val_tf = get_transforms()
-    train_dataset = FlowerDataset(config['dataset']['root'], transform=train_tf, split='train')
-    val_dataset   = FlowerDataset(config['dataset']['root'], transform=val_tf, split='valid')  # hoặc 'val'
-    test_dataset  = FlowerDataset(config['dataset']['root'], transform=val_tf, split='test')
-    
-    train_loader = DataLoader(train_dataset, batch_size=config['dataloader']['batch_size'], 
-                              shuffle=True, num_workers=4, pin_memory=True)
-    val_loader   = DataLoader(val_dataset, batch_size=config['dataloader']['batch_size'], 
-                              shuffle=False, num_workers=4)
-    test_loader  = DataLoader(test_dataset, batch_size=config['dataloader']['batch_size'], 
-                              shuffle=False, num_workers=4)
-    
-    num_classes = len(train_dataset.classes)
-    print(f"Classes: {train_dataset.classes}")
-    
+    train_ds, val_ds, test_ds = create_datasets(cfg)
+    print_dataset_summary(train_ds, val_ds, test_ds)
+    train_loader, val_loader, _ = create_dataloaders(
+        cfg, train_ds, val_ds, test_ds
+    )
+
+    num_classes = train_ds.num_classes
+    cfg.setdefault("data", {})["num_classes"] = num_classes
+
     # Model
-    model = get_model(args.model, num_classes)
-    print(f"Model: {args.model} | Params: {sum(p.numel() for p in model.parameters()):,}")
-    
-    # Optimizer & Loss
-    # optimizer = torch.optim.Adam(model.parameters(), lr=config['training']['learning_rate'])
-    optimizer = torch.optim.Adam(model.parameters(), lr=config['training']['learning_rate'], weight_decay=config['training'].get('weight_decay', 0.05))
-    # optimizer = torch.optim.AdamW(model.parameters(), lr=config['training']['learning_rate'], weight_decay=config['training'].get('weight_decay', 0.05))
-    criterion = nn.CrossEntropyLoss()
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
+    model = build_model(cfg, num_classes)
+    model = apply_from_config(model, cfg)
+    n_params = count_parameters(model)
+    print(f"Parameters      : {n_params:,}")
 
-    start_epoch = 0
+    # Optimizer / Scheduler / Loss
+    optimizer = build_optimizer(model.parameters(), cfg)
+    scheduler = build_scheduler(
+        optimizer, cfg, steps_per_epoch=len(train_loader)
+    )
+    criterion = nn.CrossEntropyLoss(
+        label_smoothing=cfg.get("training", {}).get("label_smoothing", 0.0)
+    )
 
-    if args.resume is not None:
-        start_epoch, metrics = load_checkpoint(
-            model=model,
-            optimizer=optimizer,
-            path=args.resume,
-            device=device
-        )
-        start_epoch += 1
-    
-    # Trainer
+    # Train
     trainer = Trainer(
         model=model,
-        train_loader=train_loader,
-        val_loader=val_loader,
         optimizer=optimizer,
+        criterion=criterion,
+        device=device,
         scheduler=scheduler,
-        criterion=criterion,
-        device=device,
+        cfg=cfg,
+        experiment_name=exp_name,
         num_classes=num_classes,
-        config={'log_dir': f'outputs/logs/{args.model}'}
     )
-    
-    # Train
-    trainer.fit(
-        epochs=config['training']['epochs'],
-        start_epoch=start_epoch
-    )
-    
-    # Evaluate trên test set
-    evaluator = Evaluator(
-        model=model,
-        test_loader=test_loader,
-        criterion=criterion,
-        device=device,
-        num_classes=num_classes,
-        class_names=train_dataset.classes
-    )
-    results = evaluator.evaluate()
-    
-    # Lưu kết quả
-    import json
-    with open(f'outputs/results/{args.model}_results.json', 'w') as f:
-        json.dump({
-            'model': args.model,
-            'accuracy': results['accuracy'],
-            'precision': results['precision'],
-            'recall': results['recall'],
-            'f1': results['f1'],
-            'params': sum(p.numel() for p in model.parameters())
-        }, f, indent=2)
+    result = trainer.fit(train_loader, val_loader)
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--model', type=str, required=True, 
-                    choices=['mlp', 'cnn', 'cnn_transformer', 'vit', 'swin', 'convnext', 'maxvit'])
-    parser.add_argument('--config', type=str, default='configs/config.yaml')
-    parser.add_argument('--resume', type=str, default=None)
-    args = parser.parse_args()
-    main(args)
+    # Save summary
+    summary = {
+        "experiment": exp_name,
+        "model": cfg.get("model", {}).get("name"),
+        "num_parameters": n_params,
+        "best_metric": result["best_metric"],
+        "best_checkpoint": result["best_checkpoint"],
+        "total_training_time_sec": result["total_training_time"],
+        "device": str(device),
+        "seed": seed,
+        "monitor": result.get("monitor"),
+        "best_epoch": result.get("best_epoch"),
+        "num_classes": num_classes,
+        "train_samples": len(train_ds),
+        "val_samples": len(val_ds),
+        "test_samples": len(test_ds),
+    }
+    result_dir = Path(cfg.get("logging", {}).get("result_dir", "outputs/results"))
+    result_dir.mkdir(parents=True, exist_ok=True)
+    summary_path = result_dir / f"{exp_name}_summary.json"
+    with open(summary_path, "w", encoding="utf-8") as f:
+        json.dump(summary, f, indent=2)
+    print(f"Summary saved → {summary_path}")
+
+    # Curves
+    fig_dir = Path(cfg.get("logging", {}).get("figure_dir", "outputs/figures"))
+    plot_curves(
+        result["history"],
+        save_path=fig_dir / f"{exp_name}_curves.png",
+        title=f"{exp_name} – Training Curves",
+    )
+    print("Done.")
+
+
+if __name__ == "__main__":
+    main()
