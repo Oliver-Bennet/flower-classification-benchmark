@@ -1,0 +1,22 @@
+{
+  "experiment": "E3_cnn_transformer",
+  "architecture": "CNN + Transformer (Hybrid)",
+  "description": "CNN backbone extracts local features, then Transformer Encoder models global relationships via Self-Attention.",
+  "num_classes": 102,
+  "image_size": 224,
+  "parameters": "2.06M",
+  "accuracy": "67.38%",
+  "precision": "65.35%",
+  "recall": "64.98%",
+  "macro_f1": "64.00%",
+  "inference_ms": "2.76 ms / image",
+  "training_time_min": 21.2,
+  "trained_from_scratch": true,
+  "optimizer": "AdamW",
+  "scheduler": "Cosine Annealing",
+  "initialization": "Default",
+  "epochs": 30,
+  "batch_size": 32,
+  "checkpoint": "outputs/checkpoints/E3_cnn_transformer_best.pth",
+  "notes": "Selected as demo model for best trade-off between Accuracy/F1 and computational cost among the 7 architectures. Test metrics on 2042 samples."
+}

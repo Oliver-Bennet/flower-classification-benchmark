@@ -1,0 +1,83 @@
+{
+  "architectures": [
+    {
+      "id": "E1",
+      "name": "MLP",
+      "accuracy": 33.45,
+      "precision": 31.68,
+      "recall": 30.41,
+      "macro_f1": 28.30,
+      "params_m": 0.55,
+      "training_time_min": 11.8,
+      "inference_ms": 13.90
+    },
+    {
+      "id": "E2",
+      "name": "CNN",
+      "accuracy": 51.57,
+      "precision": 48.12,
+      "recall": 47.32,
+      "macro_f1": 45.51,
+      "params_m": 0.42,
+      "training_time_min": 18.2,
+      "inference_ms": 2.99
+    },
+    {
+      "id": "E3",
+      "name": "CNN + Transformer",
+      "accuracy": 67.38,
+      "precision": 65.35,
+      "recall": 64.98,
+      "macro_f1": 64.00,
+      "params_m": 2.06,
+      "training_time_min": 21.2,
+      "inference_ms": 2.76,
+      "selected_for_demo": true
+    },
+    {
+      "id": "E4",
+      "name": "ViT",
+      "accuracy": 37.02,
+      "precision": 34.35,
+      "recall": 34.75,
+      "macro_f1": 31.72,
+      "params_m": 11.06,
+      "training_time_min": 17.0,
+      "inference_ms": 2.42
+    },
+    {
+      "id": "E5",
+      "name": "Swin",
+      "accuracy": 4.95,
+      "precision": 0.75,
+      "recall": 3.52,
+      "macro_f1": 1.15,
+      "params_m": 27.60,
+      "training_time_min": 16.7,
+      "inference_ms": 5.93
+    },
+    {
+      "id": "E6",
+      "name": "ConvNeXt",
+      "accuracy": 49.07,
+      "precision": 47.11,
+      "recall": 47.05,
+      "macro_f1": 45.81,
+      "params_m": 27.90,
+      "training_time_min": 38.6,
+      "inference_ms": 10.78
+    },
+    {
+      "id": "E7",
+      "name": "MaxViT",
+      "accuracy": 58.52,
+      "precision": 56.00,
+      "recall": 56.09,
+      "macro_f1": 54.66,
+      "params_m": 30.46,
+      "training_time_min": 1216.7,
+      "inference_ms": 13.88
+    }
+  ],
+  "note": "All models trained from scratch (no pretrained weights) on Flower Classification Dataset (102 classes). Metrics reported on the test set (2042 images). Training time is total wall-clock time."
+}

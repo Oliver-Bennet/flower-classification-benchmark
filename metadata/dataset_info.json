@@ -1,0 +1,14 @@
+{
+  "name": "Flower Classification Dataset",
+  "source": "https://www.kaggle.com/datasets/shahriar26s/flower-classification-dataset",
+  "total_images": 8189,
+  "num_classes": 102,
+  "train": 4102,
+  "validation": 2045,
+  "test": 2042,
+  "image_size": 224,
+  "split_ratio": "50% / 25% / 25%",
+  "preprocessing": "Auto-orientation + Resize to 224x224",
+  "license": "Apache 2.0",
+  "task": "Multi-class Image Classification"
+}
