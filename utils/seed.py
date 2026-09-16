@@ -1,7 +1,3 @@
-"""
-Reproducibility helpers: set random seeds for Python, NumPy, PyTorch and CUDA.
-"""
-
 from __future__ import annotations
 
 import os
@@ -10,17 +6,6 @@ from typing import Optional
 
 
 def set_seed(seed: int = 42, deterministic: bool = False) -> None:
-    """
-    Set seeds for reproducibility.
-
-    Parameters
-    ----------
-    seed : int
-        Random seed.
-    deterministic : bool
-        If True, force deterministic algorithms (may slow down training
-        and is not always possible on all CUDA ops).
-    """
     import numpy as np
     import torch
 
@@ -49,11 +34,6 @@ def set_seed(seed: int = 42, deterministic: bool = False) -> None:
 
 
 def worker_init_fn(worker_id: int, base_seed: Optional[int] = 42) -> None:
-    """
-    DataLoader worker_init_fn for additional reproducibility.
-    Usage:
-        DataLoader(..., worker_init_fn=lambda wid: worker_init_fn(wid, seed))
-    """
     import numpy as np
     import torch
 
@@ -61,5 +41,3 @@ def worker_init_fn(worker_id: int, base_seed: Optional[int] = 42) -> None:
     np.random.seed(seed)
     random.seed(seed)
     torch.manual_seed(seed)
-
-    # $env:PYTHONPATH = (Get-Location).Path

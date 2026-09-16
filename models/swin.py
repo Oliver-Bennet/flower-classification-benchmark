@@ -1,16 +1,10 @@
-"""
-Swin Transformer via timm (pretrained=False → train from scratch).
-"""
-
 from __future__ import annotations
 
 import torch.nn as nn
 
 
 def build_swin(cfg: dict, num_classes: int) -> nn.Module:
-    """
-    Build a Swin Transformer from timm without pretrained weights.
-    """
+
     try:
         import timm
     except ImportError as e:
@@ -31,7 +25,7 @@ def build_swin(cfg: dict, num_classes: int) -> nn.Module:
 
     model = timm.create_model(
         model_name,
-        pretrained=False,          # IMPORTANT: train from scratch
+        pretrained=False,         
         num_classes=num_classes,
     )
     return model

@@ -1,7 +1,3 @@
-"""
-Simple timer utilities for training / inference time measurement.
-"""
-
 from __future__ import annotations
 
 import time
@@ -12,7 +8,6 @@ import torch
 
 
 class Timer:
-    """Wall-clock timer with optional CUDA synchronization."""
 
     def __init__(self, sync_cuda: bool = True):
         self.sync_cuda = sync_cuda and torch.cuda.is_available()

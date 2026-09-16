@@ -1,7 +1,3 @@
-"""
-Single-image / batch inference helpers.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -23,11 +19,7 @@ def predict(
     class_names: Optional[List[str]] = None,
     top_k: int = 3,
 ) -> List[Tuple[str, float]]:
-    """
-    Predict class probabilities for a single image.
 
-    Returns list of (class_name_or_idx, probability) sorted descending.
-    """
     if top_k <= 0:
         raise ValueError("top_k must be greater than 0")
 

@@ -5,14 +5,7 @@ import torch.nn as nn
 
 
 class MLP(nn.Module):
-    """
-    Multi-Layer Perceptron baseline for image classification.
-
-    The input image is spatially compressed using Adaptive Average
-    Pooling before being flattened and passed through fully-connected
-    layers.
-    """
-
+    
     def __init__(
         self,
         num_classes: int,
@@ -41,7 +34,6 @@ class MLP(nn.Module):
 
 
 def build_mlp(cfg: dict, num_classes: int) -> MLP:
-    """Factory from config dict."""
     model_cfg = cfg.get("model", {}).get("mlp", {})
 
     return MLP(

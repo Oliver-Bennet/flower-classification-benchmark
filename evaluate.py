@@ -1,11 +1,3 @@
-"""
-Evaluate a trained checkpoint on the test set.
-
-Usage
------
-python evaluate.py --checkpoint outputs/checkpoints/E2_cnn_best.pth --experiment E2_cnn
-"""
-
 from __future__ import annotations
 
 import argparse

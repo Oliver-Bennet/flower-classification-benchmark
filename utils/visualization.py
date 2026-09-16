@@ -1,7 +1,3 @@
-"""
-Plotting helpers: loss/accuracy curves, confusion matrix, comparison bars.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -88,9 +84,6 @@ def plot_model_comparison(
     save_path: Optional[str | Path] = None,
     title: str = "Model Comparison",
 ) -> None:
-    """
-    results: {model_name: {metric: value, ...}}
-    """
     names = list(results.keys())
     values = [results[n].get(metric, 0.0) for n in names]
 

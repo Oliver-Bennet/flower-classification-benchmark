@@ -1,7 +1,3 @@
-"""
-Learning-rate scheduler factory.
-"""
-
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
@@ -21,11 +17,6 @@ def build_scheduler(
     cfg: Dict[str, Any],
     steps_per_epoch: Optional[int] = None,
 ) -> Optional[_LRScheduler]:
-    """
-    Build LR scheduler from config['training']['scheduler'].
-
-    For OneCycleLR, steps_per_epoch must be provided (len(train_loader)).
-    """
     sch_cfg = cfg.get("training", {}).get("scheduler", {})
     name = sch_cfg.get("name", "cosine").lower()
 

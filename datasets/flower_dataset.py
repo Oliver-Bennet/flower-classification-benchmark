@@ -1,7 +1,3 @@
-"""
-Flower Classification Dataset + DataLoader factory.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -15,10 +11,6 @@ from utils.seed import worker_init_fn
 
 
 class FlowerDataset(ImageFolder):
-    """
-    Thin wrapper around torchvision.datasets.ImageFolder.
-    Provides class_to_idx, classes, and a few convenience helpers.
-    """
 
     def __init__(
         self,
@@ -45,7 +37,6 @@ class FlowerDataset(ImageFolder):
 
 
 def _resolve_split_dir(root: Path, split_name: str, alternatives: List[str]) -> Path:
-    """Try primary name then alternatives (e.g. valid / val)."""
     candidates = [split_name] + alternatives
     for name in candidates:
         path = root / name
@@ -60,13 +51,7 @@ def _resolve_split_dir(root: Path, split_name: str, alternatives: List[str]) -> 
 def create_datasets(
     cfg: Dict[str, Any],
 ) -> Tuple[FlowerDataset, FlowerDataset, FlowerDataset]:
-    """
-    Create train / val / test FlowerDataset instances.
-
-    Returns
-    -------
-    train_ds, val_ds, test_ds
-    """
+   
     data_cfg = cfg.get("data", {})
     root = Path(data_cfg.get("root", "data/raw"))
 
@@ -113,9 +98,7 @@ def create_dataloaders(
     val_ds: Optional[Dataset] = None,
     test_ds: Optional[Dataset] = None,
 ) -> Tuple[DataLoader, DataLoader, DataLoader]:
-    """
-    Create DataLoaders. If datasets are not provided they are created from cfg.
-    """
+   
     if train_ds is None or val_ds is None or test_ds is None:
         train_ds, val_ds, test_ds = create_datasets(cfg)
 
@@ -163,7 +146,6 @@ def print_dataset_summary(
     val_ds: FlowerDataset,
     test_ds: FlowerDataset,
 ) -> None:
-    """Pretty-print basic statistics."""
     print("=" * 60)
     print("DATASET SUMMARY")
     print("=" * 60)

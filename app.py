@@ -1,16 +1,3 @@
-"""
-Streamlit demo for Flower Classification Benchmark.
-
-Demo model: E3 – CNN + Transformer (best Accuracy / F1 trade-off).
-
-Features:
-  - Upload image or capture from camera → predict
-  - Top-k predictions with confidence bars
-  - Flower gallery (search + class list)
-  - Model information + benchmark comparison table
-  - Dataset information
-"""
-
 from __future__ import annotations
 
 import json
@@ -26,10 +13,6 @@ from PIL import Image
 
 from datasets.transforms import build_eval_transforms
 from models import build_model, count_parameters
-
-# =============================================================================
-# CONFIG
-# =============================================================================
 
 st.set_page_config(
     page_title="Flower Classification Demo",
@@ -60,7 +43,6 @@ IMAGE_SIZE = 224
 TOP_K_DEFAULT = 5
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# Minimal config needed to rebuild E3 model + eval transforms
 DEMO_CFG: Dict[str, Any] = {
     "data": {
         "image_size": IMAGE_SIZE,
@@ -82,10 +64,6 @@ DEMO_CFG: Dict[str, Any] = {
 }
 
 
-# =============================================================================
-# HELPERS
-# =============================================================================
-
 def load_json(path: Path) -> Optional[Dict[str, Any]]:
     if not path.is_file():
         return None
@@ -94,16 +72,10 @@ def load_json(path: Path) -> Optional[Dict[str, Any]]:
 
 
 def load_class_names() -> List[str]:
-    """
-    Class order MUST match training (ImageFolder sorts folder names
-    lexicographically). Prefer metadata/class_names.json which was
-    built in that order. Fallback: rebuild from numeric folders + CSV.
-    """
     data = load_json(CLASS_JSON)
     if data is not None and len(data) == NUM_CLASSES:
         return list(data)
 
-    # Rebuild from CSV + ImageFolder string sort of folder ids
     if FLOWER_CSV.is_file():
         df = pd.read_csv(FLOWER_CSV)
         id_to_name = dict(zip(df["id"].astype(int), df["name"]))
@@ -121,10 +93,6 @@ def resolve_data_root() -> Optional[Path]:
 
 
 def find_sample_image(class_id: int | str, data_root: Optional[Path]) -> Optional[Path]:
-    """
-    Tìm 1 ảnh ngẫu nhiên của lớp theo folder id (0, 1, 10, 100, ...).
-    Thử lần lượt các split: train → test → valid → val.
-    """
     if data_root is None:
         return None
 
@@ -145,7 +113,6 @@ def find_sample_image(class_id: int | str, data_root: Optional[Path]) -> Optiona
 
 
 def load_checkpoint_into_model(model: torch.nn.Module, ckpt_path: Path, device: torch.device) -> None:
-    """Load state_dict from checkpoint (supports common key layouts)."""
     if not ckpt_path.is_file():
         raise FileNotFoundError(
             f"Checkpoint not found: {ckpt_path}\n"
@@ -172,7 +139,6 @@ def load_checkpoint_into_model(model: torch.nn.Module, ckpt_path: Path, device: 
 
 @st.cache_resource
 def load_model_and_transform():
-    """Load model once and cache it."""
     class_names = load_class_names()
     model = build_model(DEMO_CFG, num_classes=len(class_names))
     load_checkpoint_into_model(model, CHECKPOINT, DEVICE)
@@ -214,17 +180,13 @@ def render_confidence_bars(predictions: List[Tuple[str, float]]) -> None:
         st.progress(min(max(conf, 0.0), 1.0))
 
 
-# =============================================================================
-# SIDEBAR
-# =============================================================================
-
 with st.sidebar:
     st.title("🌸 Flower AI")
     st.caption("Benchmark Demo · CNN + Transformer")
 
     page = st.radio(
         "Navigation",
-        ["🏠 Home", "🔍 Predict", "🌼 Gallery", "📊 Model Info", "📁 Dataset"],
+        ["Home", "Predict", "Gallery", "Model Info", "Dataset"],
         label_visibility="collapsed",
     )
 
@@ -242,12 +204,8 @@ with st.sidebar:
         )
 
 
-# =============================================================================
-# HOME
-# =============================================================================
-
-if page == "🏠 Home":
-    st.title("🌸 Flower Classification Demo")
+if page == "Home":
+    st.title("Flower Classification Demo")
     st.markdown(
         """
         Ứng dụng minh họa kết quả đồ án  
@@ -277,12 +235,8 @@ if page == "🏠 Home":
     st.info("➡️ Vào trang **Predict** để thử nhận diện ảnh hoa của bạn.")
 
 
-# =============================================================================
-# PREDICT
-# =============================================================================
-
-elif page == "🔍 Predict":
-    st.title("🔍 Nhận diện hoa")
+elif page == "Predict":
+    st.title("Nhận diện hoa")
     st.markdown("Upload ảnh hoặc dùng camera, sau đó nhấn **Predict**.")
 
     try:
@@ -299,7 +253,7 @@ elif page == "🔍 Predict":
 
     top_k = st.slider("Top-K predictions", min_value=1, max_value=10, value=TOP_K_DEFAULT)
 
-    tab_upload, tab_camera = st.tabs(["📤 Upload ảnh", "📷 Chụp camera"])
+    tab_upload, tab_camera = st.tabs(["Upload ảnh", "Chụp camera"])
 
     image: Optional[Image.Image] = None
 
@@ -344,13 +298,8 @@ elif page == "🔍 Predict":
     else:
         st.info("Hãy upload ảnh hoặc chụp camera để bắt đầu.")
 
-
-# =============================================================================
-# GALLERY
-# =============================================================================
-
-elif page == "🌼 Gallery":
-    st.title("🌼 Flower Gallery")
+elif page == "Gallery":
+    st.title("Flower Gallery")
     st.markdown("Danh sách 102 loài hoa trong dataset.")
 
     if not FLOWER_CSV.is_file():
@@ -396,12 +345,8 @@ elif page == "🌼 Gallery":
                     st.markdown(f"**{int(row['id']) + 1}. {row['name']}**")
 
 
-# =============================================================================
-# MODEL INFO
-# =============================================================================
-
-elif page == "📊 Model Info":
-    st.title("📊 Model Information")
+elif page == "Model Info":
+    st.title("Model Information")
 
     info = load_json(MODEL_INFO)
     if info:
@@ -475,12 +420,8 @@ elif page == "📊 Model Info":
         )
 
 
-# =============================================================================
-# DATASET
-# =============================================================================
-
-elif page == "📁 Dataset":
-    st.title("📁 Dataset Information")
+elif page == "Dataset":
+    st.title("Dataset Information")
 
     info = load_json(DATASET_INFO)
     if info:

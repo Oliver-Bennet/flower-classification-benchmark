@@ -1,7 +1,3 @@
-"""
-Model evaluation on a DataLoader (val / test).
-"""
-
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional

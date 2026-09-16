@@ -1,13 +1,3 @@
-"""
-Single-image inference CLI.
-
-Usage
------
-python inference.py --checkpoint outputs/checkpoints/E2_cnn_best.pth \
-                    --image path/to/flower.jpg \
-                    --experiment E2_cnn
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -47,7 +37,6 @@ def main():
 
     device = get_device(cfg)
 
-    # Need class names from dataset
     train_ds, _, _ = create_datasets(cfg)
     class_names = train_ds.classes
     num_classes = train_ds.num_classes

@@ -1,9 +1,3 @@
-"""
-Hybrid CNN + Transformer Encoder for image classification.
-
-CNN extracts local features → tokens → Transformer Encoder → classifier.
-"""
-
 from __future__ import annotations
 
 from typing import List, Optional
@@ -13,7 +7,6 @@ import torch.nn as nn
 
 
 class CNNStem(nn.Module):
-    """Simple CNN backbone that produces a downsampled feature map."""
 
     def __init__(
         self,
@@ -22,8 +15,6 @@ class CNNStem(nn.Module):
     ):
         super().__init__()
 
-        # Three stride-2 convolution blocks:
-        # 224x224 → 112x112 → 56x56 → 28x28
         if channels is None:
             channels = [64, 128, 128]
 
@@ -50,7 +41,7 @@ class CNNStem(nn.Module):
         self.out_channels = channels[-1]
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.net(x)  # (B, C, H', W')
+        return self.net(x) 
 
 
 class TransformerEncoderBlock(nn.Module):
@@ -85,7 +76,6 @@ class TransformerEncoderBlock(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # x: (B, N, D)
 
         h = self.norm1(x)
 
@@ -103,27 +93,6 @@ class TransformerEncoderBlock(nn.Module):
 
 
 class CNNTransformer(nn.Module):
-    """
-    CNN stem → flatten spatial dims → project to embed_dim
-    → CLS token + positional embedding
-    → Transformer Encoder → CLS → classifier.
-
-    With the default configuration:
-
-        224x224
-          ↓
-        112x112
-          ↓
-        56x56
-          ↓
-        28x28
-          ↓
-        784 spatial tokens
-          ↓
-        + CLS token = 785 tokens
-          ↓
-        Transformer Encoder
-    """
 
     def __init__(
         self,
@@ -147,8 +116,6 @@ class CNNTransformer(nn.Module):
             channels=cnn_channels,
         )
 
-        # Three stride-2 convs:
-        # image_size → image_size/2 → image_size/4 → image_size/8
         feat_h = image_size // 8
         feat_w = image_size // 8
 
@@ -195,38 +162,27 @@ class CNNTransformer(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         B = x.shape[0]
 
-        # CNN feature extraction
         feat = self.stem(x)
-        # Expected: (B, C, 28, 28)
 
-        # Convert spatial feature map to tokens
         feat = feat.flatten(2).transpose(1, 2)
-        # (B, 784, C)
 
-        # Project CNN features to Transformer dimension
         tokens = self.proj(feat)
-        # (B, 784, embed_dim)
 
-        # Add CLS token
         cls = self.cls_token.expand(B, -1, -1)
 
         tokens = torch.cat(
             [cls, tokens],
             dim=1,
         )
-        # (B, 785, embed_dim)
 
-        # Positional embedding
         tokens = tokens + self.pos_embed
         tokens = self.pos_drop(tokens)
 
-        # Transformer Encoder
         for blk in self.blocks:
             tokens = blk(tokens)
 
         tokens = self.norm(tokens)
 
-        # Classification using CLS token
         cls_out = tokens[:, 0]
 
         return self.head(cls_out)

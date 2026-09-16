@@ -1,27 +1,9 @@
-"""
-Early Stopping utility.
-"""
-
 from __future__ import annotations
 
 from typing import Optional
 
 
 class EarlyStopping:
-    """
-    Stop training when a monitored metric has stopped improving.
-
-    Parameters
-    ----------
-    patience : int
-        Number of epochs with no improvement after which training will be stopped.
-    min_delta : float
-        Minimum change in the monitored quantity to qualify as an improvement.
-    mode : str
-        'min' or 'max'. In 'min' mode, training stops when the quantity
-        monitored has stopped decreasing; in 'max' mode it stops when
-        the quantity monitored has stopped increasing.
-    """
 
     def __init__(
         self,
@@ -41,13 +23,7 @@ class EarlyStopping:
         self.best_epoch: Optional[int] = None
 
     def __call__(self, score: float, epoch: int = 0) -> bool:
-        """
-        Call after each epoch with the monitored metric value.
-
-        Returns
-        -------
-        True if training should stop, False otherwise.
-        """
+    
         if self.best_score is None:
             self.best_score = score
             self.best_epoch = epoch
@@ -81,7 +57,6 @@ class EarlyStopping:
         }
 
     def reset(self) -> None:
-        """Reset early stopping state."""
         self.counter = 0
         self.best_score = None
         self.should_stop = False

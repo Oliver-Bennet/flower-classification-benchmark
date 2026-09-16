@@ -1,7 +1,3 @@
-"""
-Optimizer factory.
-"""
-
 from __future__ import annotations
 
 from typing import Any, Dict, Iterable
@@ -14,9 +10,6 @@ def build_optimizer(
     model_params: Iterable,
     cfg: Dict[str, Any],
 ) -> Optimizer:
-    """
-    Build optimizer from config['training']['optimizer'].
-    """
     opt_cfg = cfg.get("training", {}).get("optimizer", {})
     name = opt_cfg.get("name", "adamw").lower()
     lr = float(opt_cfg.get("lr", 1e-3))

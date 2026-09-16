@@ -1,18 +1,3 @@
-"""
-Main training entry point.
-
-Usage examples
---------------
-# Train baseline CNN with default config
-python train.py --experiment E2_cnn
-
-# Train a specific architecture group experiment
-python train.py --experiment architecture.E4_vit
-
-# Override config path / output name
-python train.py --experiment E2_cnn --name my_cnn_run
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -82,7 +67,6 @@ def main():
     print(f"Scheduler       : {cfg.get('training', {}).get('scheduler', {}).get('name')}")
     print(f"Initialization  : {cfg.get('training', {}).get('initialization', {}).get('name')}")
 
-    # Data
     train_ds, val_ds, test_ds = create_datasets(cfg)
     print_dataset_summary(train_ds, val_ds, test_ds)
     train_loader, val_loader, _ = create_dataloaders(
@@ -92,13 +76,11 @@ def main():
     num_classes = train_ds.num_classes
     cfg.setdefault("data", {})["num_classes"] = num_classes
 
-    # Model
     model = build_model(cfg, num_classes)
     model = apply_from_config(model, cfg)
     n_params = count_parameters(model)
     print(f"Parameters      : {n_params:,}")
 
-    # Optimizer / Scheduler / Loss
     optimizer = build_optimizer(model.parameters(), cfg)
     scheduler = build_scheduler(
         optimizer, cfg, steps_per_epoch=len(train_loader)
@@ -107,7 +89,6 @@ def main():
         label_smoothing=cfg.get("training", {}).get("label_smoothing", 0.0)
     )
 
-    # Train
     trainer = Trainer(
         model=model,
         optimizer=optimizer,
@@ -120,7 +101,6 @@ def main():
     )
     result = trainer.fit(train_loader, val_loader)
 
-    # Save summary
     summary = {
         "experiment": exp_name,
         "model": cfg.get("model", {}).get("name"),
@@ -144,7 +124,6 @@ def main():
         json.dump(summary, f, indent=2)
     print(f"Summary saved → {summary_path}")
 
-    # Curves
     fig_dir = Path(cfg.get("logging", {}).get("figure_dir", "outputs/figures"))
     plot_curves(
         result["history"],

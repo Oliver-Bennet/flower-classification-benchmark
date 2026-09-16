@@ -1,7 +1,3 @@
-"""
-Training loop (Trainer).
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -48,7 +44,6 @@ class Trainer:
             enabled=self.use_amp,
         )
 
-        # OneCycleLR steps per batch; others step per epoch
         self.scheduler_per_batch = (
             self.scheduler is not None
             and type(self.scheduler).__name__ == "OneCycleLR"
@@ -184,7 +179,6 @@ class Trainer:
                 f"macro_f1={row['val_macro_f1']:.4f} | lr={lr:.2e} | time={epoch_time:.1f}s"
             )
 
-            # Checkpoint best
             monitor_val = row.get(
                 self.monitor,
                 row.get("val_macro_f1", row["val_accuracy"]),

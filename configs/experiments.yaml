@@ -89,9 +89,7 @@ architecture:
         name: "cosine"
       initialization:
         name: "default"
-# -----------------------------------------------------------------------------
-# Optimizer Benchmark (E8 – E10) – fixed model = CNN
-# -----------------------------------------------------------------------------
+
 optimizer:
   E8_sgd:
     description: "CNN + SGD"
@@ -136,9 +134,6 @@ optimizer:
       initialization:
         name: "default"
 
-# -----------------------------------------------------------------------------
-# Weight Initialization Benchmark (E11 – E12) – fixed model = CNN, optimizer = AdamW
-# -----------------------------------------------------------------------------
 initialization:
   E11_xavier:
     description: "CNN + Xavier / Glorot init"
@@ -166,9 +161,6 @@ initialization:
       initialization:
         name: "kaiming"
 
-# -----------------------------------------------------------------------------
-# Learning Rate Scheduler Benchmark (E13 – E15)
-# -----------------------------------------------------------------------------
 scheduler:
   E13_steplr:
     description: "CNN + StepLR"

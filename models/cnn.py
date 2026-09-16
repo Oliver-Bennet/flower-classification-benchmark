@@ -1,7 +1,3 @@
-"""
-Simple CNN baseline for Flower Classification.
-"""
-
 from __future__ import annotations
 
 from typing import List, Optional
@@ -11,14 +7,7 @@ import torch.nn as nn
 
 
 class CNN(nn.Module):
-    """
-    Lightweight CNN:
-
-        Conv → ReLU → MaxPool  (× N blocks)
-        AdaptiveAvgPool
-        Linear classifier
-    """
-
+    
     def __init__(
         self,
         num_classes: int = 102,

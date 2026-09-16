@@ -1,7 +1,3 @@
-"""
-Simple CSV / JSON logger for training history.
-"""
-
 from __future__ import annotations
 
 import csv
@@ -11,11 +7,6 @@ from typing import Any, Dict, List, Optional
 
 
 class TrainingLogger:
-    """
-    Logs per-epoch metrics to console, CSV, and JSON.
-    Keeps an in-memory history and can retrieve the best epoch.
-    """
-
     def __init__(
         self,
         log_dir: str | Path,
@@ -38,9 +29,6 @@ class TrainingLogger:
         self._csv_writer = None
 
     def log(self, epoch: int, metrics: Dict[str, Any]) -> None:
-        """
-        Record one epoch of metrics.
-        """
         row = {"epoch": epoch, **metrics}
         self.history.append(row)
 
@@ -78,9 +66,6 @@ class TrainingLogger:
         self._csv_file.flush()
 
     def save_json(self) -> None:
-        """
-        Save full in-memory history to JSON.
-        """
         with open(self.json_path, "w", encoding="utf-8") as f:
             json.dump(self.history, f, indent=2)
 
@@ -89,9 +74,6 @@ class TrainingLogger:
         key: str = "val_accuracy",
         mode: str = "max",
     ) -> Dict[str, Any]:
-        """
-        Return the epoch with the best value for a metric.
-        """
         if not self.history:
             return {}
 
@@ -110,9 +92,6 @@ class TrainingLogger:
         raise ValueError("mode must be 'min' or 'max'")
 
     def close(self) -> None:
-        """
-        Save JSON history and close the CSV file.
-        """
         self.save_json()
 
         if self._csv_file is not None:

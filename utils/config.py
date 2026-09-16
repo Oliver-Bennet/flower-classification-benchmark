@@ -8,7 +8,6 @@ import yaml
 
 
 def load_yaml(path: Union[str, Path]) -> Dict[str, Any]:
-    """Load a YAML file and return a dictionary."""
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(f"Config file not found: {path}")
@@ -18,10 +17,6 @@ def load_yaml(path: Union[str, Path]) -> Dict[str, Any]:
 
 
 def deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Recursively merge `override` into a deep copy of `base`.
-    Lists and non-dict values in override replace the corresponding base values.
-    """
     result = copy.deepcopy(base)
     for key, value in override.items():
         if (
@@ -40,20 +35,6 @@ def load_config(
     experiment_name: Optional[str] = None,
     experiments_path: Union[str, Path] = "configs/experiments.yaml",
 ) -> Dict[str, Any]:
-    """
-    Load main config and optionally merge an experiment override.
-
-    Parameters
-    ----------
-    config_path : path to main config.yaml
-    experiment_name : e.g. "E2_cnn" or "architecture.E2_cnn"
-                      If None, only the base config is returned.
-    experiments_path : path to experiments.yaml
-
-    Returns
-    -------
-    Merged configuration dictionary.
-    """
     cfg = load_yaml(config_path)
 
     if experiment_name is None:
@@ -85,7 +66,6 @@ def load_config(
 
 
 def get_device(cfg: Dict[str, Any]):
-    """Return torch.device according to config with CUDA fallback."""
     import torch
 
     requested = cfg.get("project", {}).get("device", "cuda").lower()
@@ -97,7 +77,6 @@ def get_device(cfg: Dict[str, Any]):
 
 
 def ensure_dirs(cfg: Dict[str, Any]) -> None:
-    """Create output directories defined in the config."""
     logging_cfg = cfg.get("logging", {})
     for key in ("log_dir", "checkpoint_dir", "figure_dir", "result_dir"):
         path = logging_cfg.get(key)

@@ -1,7 +1,3 @@
-"""
-MaxViT via timm (pretrained=False → train from scratch).
-"""
-
 from __future__ import annotations
 
 import torch.nn as nn

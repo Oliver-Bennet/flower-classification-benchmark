@@ -1,7 +1,3 @@
-"""
-Weight initialization factory.
-"""
-
 from __future__ import annotations
 
 from typing import Any, Dict
@@ -38,12 +34,7 @@ def _kaiming_init(module: nn.Module) -> None:
 
 
 def apply_initialization(model: nn.Module, name: str = "default") -> nn.Module:
-    """
-    Apply weight initialization strategy.
 
-    name : "default" | "xavier" | "kaiming"
-    "default" leaves the weights as constructed by the model itself.
-    """
     name = name.lower()
     if name == "default":
         return model

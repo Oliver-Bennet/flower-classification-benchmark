@@ -1,7 +1,3 @@
-"""
-Classification metrics: Accuracy, Precision, Recall, F1, Confusion Matrix.
-"""
-
 from __future__ import annotations
 
 from typing import Dict, List, Optional
@@ -19,9 +15,6 @@ import torch
 
 
 class MetricTracker:
-    """
-    Accumulate predictions and compute metrics at the end of an epoch / evaluation.
-    """
 
     def __init__(self, num_classes: int, average: str = "macro"):
         self.num_classes = num_classes

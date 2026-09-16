@@ -1,7 +1,3 @@
-"""
-Vision Transformer (ViT) implemented from scratch (no pretrained weights).
-"""
-
 from __future__ import annotations
 
 import torch
@@ -9,7 +5,6 @@ import torch.nn as nn
 
 
 class PatchEmbed(nn.Module):
-    """Image → sequence of patch embeddings via Conv2d."""
 
     def __init__(
         self,
@@ -28,7 +23,6 @@ class PatchEmbed(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # x: (B, C, H, W) → (B, embed_dim, H/P, W/P) → (B, N, embed_dim)
         x = self.proj(x)
         x = x.flatten(2).transpose(1, 2)
         return x
@@ -117,7 +111,7 @@ class VisionTransformer(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         B = x.shape[0]
-        x = self.patch_embed(x)  # (B, N, D)
+        x = self.patch_embed(x)  
 
         cls = self.cls_token.expand(B, -1, -1)
         x = torch.cat([cls, x], dim=1)
